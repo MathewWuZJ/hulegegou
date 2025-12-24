@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦊狐了个狗🐶</title>
+    <style>
+        :root {
+            --bg-color: #81d8d0; /* Tiffany 绿 */
+            --accent-color: #0fa3b1;
+            --tile-bg: #fff;
+            --slot-bg: rgba(255, 255, 255, 0.2);
+            --disabled: rgba(0,0,0,0.25);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            color: #0f2e2e;
+            background-image: radial-gradient(circle, #a6ede4 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        h1 {
+            margin-top: 12px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.4);
+            font-size: 2.1rem;
+        }
+
+        .hud {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            backdrop-filter: blur(6px);
+        }
+
+        .score {
+            font-size: 1rem;
+            letter-spacing: 1px;
+        }
+
+        .level-tag {
+            font-size: 0.95rem;
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 10px;
+        }
+
+        .restart-btn {
+            padding: 8px 16px;
+            font-size: 1rem;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            z-index: 30;
+        }
+
+        .restart-btn:hover { transform: translateY(-1px); }
+
+        .restart-btn-fixed {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+        }
+
+        .tool-btn {
+            padding: 8px 16px;
+            font-size: 1rem;
+            background: #fff;
+            color: var(--accent-color);
+            border: 1px solid rgba(15,163,177,0.35);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s, color 0.2s, opacity 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+        }
+
+        .tool-btn:hover { transform: translateY(-1px); }
+
+        .tool-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+            color: var(--disabled);
+            border-color: var(--disabled);
+        }
+
+        /* 底部槽位区域 */
+        .slot-bar {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 20;
+        }
+
+        /* 下方槽位 */
+        #slot-container {
+            position: relative;
+            width: 380px;
+            height: 70px;
+            background: var(--slot-bg);
+            backdrop-filter: blur(10px);
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 5px;
+            box-sizing: border-box;
+        }
+
+        .slot-tile {
+            width: 45px;
+            height: 45px;
+            background: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            animation: bounceIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* 游戏区域 */
+        #game-container {
+            position: relative;
+            width: 560px;
+            height: 520px;
+            margin-top: 16px;
+            z-index: 10;
+        }
+
+        .tile {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: var(--tile-bg);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 4px #ccc, 0 8px 15px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+            user-select: none;
+            border: 2px solid transparent;
+        }
+
+        .tile.disabled {
+            filter: brightness(0.5);
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .tile:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px #ccc, 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        @keyframes bounceIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* 提示与遮罩 */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: #fff;
+        }
+
+        button {
+            padding: 10px 30px;
+            font-size: 1.2rem;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button:hover { transform: scale(1.1); }
+
+        /* 雪花背景 */
+        .snow-container {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .snowflake {
+            position: absolute;
+            color: white;
+            font-size: 1.2rem;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(105vh) rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="snow-container" id="snow"></div>
+
+    <button id="restart-btn" class="restart-btn restart-btn-fixed">重新开始</button>
+
+    <h1>🦊狐了个狗🐶</h1>
+    <div class="hud">
+        <div class="score">分数：<span id="score">0</span></div>
+        <div class="level-tag">关卡：<span id="level-label">1</span>/2</div>
+    </div>
+
+    <div id="game-container"></div>
+
+    <div class="slot-bar">
+        <div id="slot-container"></div>
+        <button id="tool-btn" class="tool-btn">道具：返还槽位</button>
+    </div>
+
+    <div class="overlay" id="overlay">
+        <h2 id="result-text">游戏结束</h2>
+        <button id="overlay-next" style="display:none;">下一关</button>
+        <button id="overlay-restart">再玩一次</button>
+    </div>
+
+    <script>
+        const ICONS = ['🦊', '🐶', '🎅', '🎄', '🎁', '🔔', '🦌', '❄️', '🍪', '🕯️', '🧤', '🍭'];
+        const LEVELS = [
+            {
+                name: '第一关',
+                icons: ['🐶', '🦊', '🎄'],
+                layers: [
+                    { rows: 3, cols: 3, offsetX: 205, offsetY: 140, zIndex: 1 }
+                ]
+            },
+            {
+                name: '第二关',
+                icons: ICONS,
+                layers: [
+                    // 左侧小堆
+                    { rows: 3, cols: 2, offsetX: 30, offsetY: 140, zIndex: 1 },
+                    { rows: 2, cols: 2, offsetX: 45, offsetY: 170, zIndex: 2 },
+                    // 中央主堆
+                    { rows: 5, cols: 5, offsetX: 150, offsetY: 40, zIndex: 1 },
+                    { rows: 4, cols: 4, offsetX: 175, offsetY: 70, zIndex: 2 },
+                    { rows: 3, cols: 3, offsetX: 200, offsetY: 100, zIndex: 3 },
+                    { rows: 2, cols: 2, offsetX: 225, offsetY: 130, zIndex: 4 },
+                    // 右侧小堆
+                    { rows: 3, cols: 2, offsetX: 410, offsetY: 140, zIndex: 1 },
+                    { rows: 2, cols: 2, offsetX: 395, offsetY: 170, zIndex: 2 }
+                ]
+            }
+        ];
+
+        const TILE_WIDTH = 50;
+        const TILE_HEIGHT = 50;
+        const SLOT_MAX = 7;
+        const SCORE_PER_TILE = 10;
+        
+        let allTiles = [];
+        let slot = [];
+        let score = 0;
+        let currentLevel = 0; // 0-based index for LEVELS
+        let toolUsed = false;
+        
+        const gameContainer = document.getElementById('game-container');
+        const slotContainer = document.getElementById('slot-container');
+        const overlay = document.getElementById('overlay');
+        const scoreElem = document.getElementById('score');
+        const levelLabel = document.getElementById('level-label');
+        const restartBtn = document.getElementById('restart-btn');
+        const overlayRestart = document.getElementById('overlay-restart');
+        const overlayNext = document.getElementById('overlay-next');
+        const toolBtn = document.getElementById('tool-btn');
+
+        // 1. 初始化雪花
+        function createSnow() {
+            const snow = document.getElementById('snow');
+            snow.innerHTML = '';
+            for(let i=0; i<50; i++) {
+                const div = document.createElement('div');
+                div.className = 'snowflake';
+                div.innerHTML = '❄';
+                div.style.left = Math.random() * 100 + 'vw';
+                div.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                div.style.opacity = Math.random();
+                snow.appendChild(div);
+            }
+        }
+
+        function updateScore() {
+            scoreElem.textContent = score;
+        }
+
+        function updateLevelLabel() {
+            levelLabel.textContent = currentLevel + 1;
+        }
+
+        function resetToolState() {
+            toolUsed = false;
+            toolBtn.disabled = false;
+            toolBtn.textContent = '道具：返还槽位';
+        }
+
+        function resetGame() {
+            score = 0;
+            currentLevel = 0;
+            overlay.style.display = 'none';
+            overlayNext.style.display = 'none';
+            allTiles = [];
+            slot = [];
+            updateScore();
+            resetToolState();
+            initLevel(currentLevel);
+        }
+
+        // 道具：将槽位里的卡片返还到上方一字排开（每关仅一次）
+        function useReturnTool() {
+            if (toolUsed) return;
+            if (!slot.length) return;
+            toolUsed = true;
+            toolBtn.disabled = true;
+            toolBtn.textContent = '道具已用完';
+
+            const startX = 10;
+            const gap = 55;
+            const posY = 10;
+            slot.forEach((tile, idx) => {
+                tile.status = 0;
+                tile.x = startX + idx * gap;
+                tile.y = posY;
+                tile.zIndex = 1;
+            });
+            slot = [];
+            renderBoard();
+            renderSlot();
+        }
+
+        function buildTilePool(levelCfg) {
+            const { layers, icons } = levelCfg;
+            const totalCells = layers.reduce((sum, l) => sum + l.rows * l.cols, 0);
+            const groups = Math.floor(totalCells / 3);
+            const pool = [];
+            for (let i = 0; i < groups * 3; i++) {
+                pool.push(icons[Math.floor(i / 3) % icons.length]);
+            }
+            pool.sort(() => Math.random() - 0.5);
+            return pool;
+        }
+
+        // 初始化某关卡
+        function initLevel(levelIdx) {
+            const levelCfg = LEVELS[levelIdx];
+            if (!levelCfg) return;
+            slot = [];
+            allTiles = [];
+            gameContainer.innerHTML = '';
+            slotContainer.innerHTML = '';
+            overlay.style.display = 'none';
+            overlayNext.style.display = 'none';
+            updateLevelLabel();
+            resetToolState();
+
+            const tilePool = buildTilePool(levelCfg);
+            let count = 0;
+
+            levelCfg.layers.forEach(layer => {
+                for(let r=0; r<layer.rows; r++) {
+                    for(let c=0; c<layer.cols; c++) {
+                        if(count >= tilePool.length) break;
+                        const tile = {
+                            id: count,
+                            icon: tilePool[count],
+                            x: c * (TILE_WIDTH + 5) + layer.offsetX,
+                            y: r * (TILE_HEIGHT + 5) + layer.offsetY,
+                            zIndex: layer.zIndex,
+                            status: 0 // 0: 在场上, 1: 在槽位, 2: 已消除
+                        };
+                        allTiles.push(tile);
+                        count++;
+                    }
+                }
+            });
+
+            renderBoard();
+        }
+
+        // 3. 渲染游戏面板
+        function renderBoard() {
+            gameContainer.innerHTML = '';
+            allTiles.forEach(tile => {
+                if(tile.status !== 0) return;
+
+                const div = document.createElement('div');
+                div.className = 'tile';
+                div.innerHTML = tile.icon;
+                div.style.left = tile.x + 'px';
+                div.style.top = tile.y + 'px';
+                div.style.zIndex = tile.zIndex + 10; // 保证在雪花之上
+
+                // 检测是否被覆盖
+                const isCovered = allTiles.some(other => {
+                    return other.status === 0 && 
+                           other.zIndex > tile.zIndex &&
+                           Math.abs(other.x - tile.x) < TILE_WIDTH * 0.8 &&
+                           Math.abs(other.y - tile.y) < TILE_HEIGHT * 0.8;
+                });
+
+                if(isCovered) {
+                    div.classList.add('disabled');
+                } else {
+                    div.onclick = () => moveToSlot(tile);
+                }
+
+                gameContainer.appendChild(div);
+            });
+        }
+
+        // 4. 点击移动到槽位
+        function moveToSlot(tile) {
+            if (slot.length >= SLOT_MAX) return;
+
+            tile.status = 1;
+            slot.push(tile);
+            
+            // 排序槽位，方便消除判断
+            slot.sort((a, b) => {
+                const iconA = ICONS.indexOf(a.icon);
+                const iconB = ICONS.indexOf(b.icon);
+                return iconA - iconB;
+            });
+
+            // 检查三消
+            const countMap = {};
+            slot.forEach(item => countMap[item.icon] = (countMap[item.icon] || 0) + 1);
+            
+            let gainedTiles = 0;
+            for(const icon in countMap) {
+                if(countMap[icon] >= 3) {
+                    // 消除
+                    slot = slot.filter(item => {
+                        if(item.icon === icon) {
+                            item.status = 2;
+                            return false;
+                        }
+                        return true;
+                    });
+                    gainedTiles += countMap[icon];
+                }
+            }
+
+            if (gainedTiles > 0) {
+                score += gainedTiles * SCORE_PER_TILE;
+                updateScore();
+            }
+
+            renderBoard();
+            renderSlot();
+            checkGameState();
+        }
+
+        // 5. 渲染槽位
+        function renderSlot() {
+            slotContainer.innerHTML = '';
+            slot.forEach(tile => {
+                const div = document.createElement('div');
+                div.className = 'slot-tile';
+                div.innerHTML = tile.icon;
+                slotContainer.appendChild(div);
+            });
+        }
+
+        // 6. 胜负判断
+        function checkGameState() {
+            const activeTiles = allTiles.filter(t => t.status === 0);
+            if(activeTiles.length === 0 && slot.length === 0) {
+                if (currentLevel < LEVELS.length - 1) {
+                    showResult(`${LEVELS[currentLevel].name}完成！进入下一关`, true);
+                } else {
+                    showResult("圣诞快乐！你赢了！🎁", false);
+                }
+            } else if(slot.length >= SLOT_MAX) {
+                showResult("槽位满了，再接再厉！🎅", false);
+            }
+        }
+
+        function showResult(text, hasNext) {
+            document.getElementById('result-text').innerText = text;
+            overlay.style.display = 'flex';
+            overlayNext.style.display = hasNext ? 'inline-block' : 'none';
+        }
+
+        function goNextLevel() {
+            if (currentLevel < LEVELS.length - 1) {
+                currentLevel += 1;
+                overlay.style.display = 'none';
+                overlayNext.style.display = 'none';
+                initLevel(currentLevel);
+            }
+        }
+
+        restartBtn.addEventListener('click', resetGame);
+        overlayRestart.addEventListener('click', resetGame);
+        overlayNext.addEventListener('click', goNextLevel);
+        toolBtn.addEventListener('click', useReturnTool);
+
+        // 启动
+        createSnow();
+        initLevel(currentLevel);
+    </script>
+</body>
+</html>
